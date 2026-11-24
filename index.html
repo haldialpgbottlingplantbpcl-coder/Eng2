@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Haldia Smart Store</title>
+
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║  HALDIA SMART STORE — Smart Engineering Material Management          ║
+║  Single-file offline-first ERP for Haldia LPG Bottling Plant         ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  PUBLISH TO GITHUB PAGES:                                            ║
+║  1. Create repo  →  save this file as index.html                     ║
+║  2. git add . && git commit -m "init" && git push                    ║
+║  3. Settings → Pages → Branch: main / root                           ║
+║  4. Open https://<user>.github.io/<repo>/                            ║
+║                                                                      ║
+║  FIRST RUN:                                                          ║
+║  • Create Super Admin  OR  click "Load Demo Data"                    ║
+║  • Demo login: admin / admin123                                      ║
+║                                                                      ║
+║  FEATURES:                                                           ║
+║  ✓ Auth + registration + admin approval                              ║
+║  ✓ Material master + auto material ID + categories                   ║
+║  ✓ QR generation + camera/manual scanning                            ║
+║  ✓ Receipts/Issues/Returns → atomic stock ledger                     ║
+║  ✓ Material requests with approve → issue workflow                   ║
+║  ✓ Reports: CSV / Excel / PDF export                                 ║
+║  ✓ Low-stock / out-of-stock alerts + notifications                   ║
+║  ✓ Audit log, user management, backup/restore, dark mode             ║
+║                                                                      ║
+║  LIMITATIONS:                                                        ║
+║  • localStorage only — no cross-device sync                          ║
+║  • For multi-user production: connect Firebase + Cloud Functions     ║
+║  • Never use simpleHash for real credentials                         ║
+╚══════════════════════════════════════════════════════════════════════╝
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          navy: { 50:'#EEF2F8',100:'#D9E2EF',700:'#1B3A66',800:'#122A4D',900:'#0B1F3A' },
+          steel: { 100:'#F4F6F8',300:'#C9D2DC',500:'#7C8A99',700:'#3D4A5A' },
+          teal: { 400:'#2DD4BF',500:'#14B8A6',600:'#0D9488',700:'#0F766E' }
+        }
+      }
+    }
+  };
+</script>
+
+<style>
+  *{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{background:#F4F6F8}.dark body{background:#0B1F3A}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;font-size:.875rem;transition:all .15s ease;cursor:pointer;border:none}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:#0D9488;color:#fff}.btn-primary:hover:not(:disabled){background:#0F766E}
+  .btn-secondary{background:#C9D2DC;color:#1B3A66}.btn-secondary:hover:not(:disabled){background:#a8b6c5}
+  .dark .btn-secondary{background:#1B3A66;color:#D9E2EF}
+  .btn-danger{background:#DC2626;color:#fff}.btn-danger:hover:not(:disabled){background:#B91C1C}
+  .btn-ghost{background:transparent;color:inherit}.btn-ghost:hover{background:rgba(0,0,0,.05)}.dark .btn-ghost:hover{background:rgba(255,255,255,.08)}
+  .input{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:1px solid #C9D2DC;background:#fff;font-size:.875rem;transition:border .15s}
+  .input:focus{outline:none;border-color:#14B8A6;box-shadow:0 0 0 3px rgba(20,184,166,.15)}
+  .dark .input{background:#122A4D;border-color:#1B3A66;color:#fff}
+  .label{display:block;font-size:.75rem;font-weight:600;color:#3D4A5A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.25rem}
+  .dark .label{color:#C9D2DC}
+  .card{background:#fff;border-radius:.75rem;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
+  .dark .card{background:#122A4D}
+  .badge{display:inline-flex;align-items:center;padding:.125rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600;text-transform:uppercase}
+  .badge-green{background:#D1FAE5;color:#065F46}.badge-yellow{background:#FEF3C7;color:#92400E}
+  .badge-red{background:#FEE2E2;color:#991B1B}.badge-blue{background:#DBEAFE;color:#1E40AF}
+  .badge-gray{background:#E5E7EB;color:#374151}
+  .dark .badge-green{background:#064E3B;color:#6EE7B7}.dark .badge-yellow{background:#78350F;color:#FCD34D}
+  .dark .badge-red{background:#7F1D1D;color:#FCA5A5}.dark .badge-blue{background:#1E3A8A;color:#93C5FD}
+  .dark .badge-gray{background:#374151;color:#D1D5DB}
+  .fade-in{animation:fadeIn .2s ease}@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .sidebar-item{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-radius:.5rem;font-size:.875rem;font-weight:500;cursor:pointer;transition:all .15s;color:#C9D2DC;border:none;background:none;width:100%;text-align:left}
+  .sidebar-item:hover{background:#1B3A66;color:#fff}.sidebar-item.active{background:#0D9488;color:#fff}
+  .notif-toast{position:fixed;bottom:1rem;right:1rem;z-index:1000;padding:.75rem 1rem;border-radius:.5rem;color:#fff;font-weight:500;box-shadow:0 10px 25px rgba(0,0,0,.2);animation:slideIn .25s ease}
+  @keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+  #qr-reader{max-width:100%}#qr-reader video{border-radius:.5rem}
+</style>
+</head>
+<body class="min-h-screen">
+<div id="root"></div>
+<script>
+'use strict';
+
+// ═══════════════════ UTILITIES ═══════════════════
+const $ = (s,c=document)=>c.querySelector(s);
+const $$ = (s,c=document)=>[...c.querySelectorAll(s)];
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc = (s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n)=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(Number(n)||0);
+const fmtCur = (n)=>'₹'+fmt(n);
+const dt = (ts)=>ts?new Date(ts).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'}):'—';
+const today = ()=>new Date().toISOString().slice(0,10);
+const simpleHash = (s)=>{let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return h.toString(36);};
+
+// ═══════════════════ STORAGE ═══════════════════
+const DB = {
+  get(k,d=[]){try{const v=localStorage.getItem('hss_'+k);return v?JSON.parse(v):d;}catch{return d;}},
+  set(k,v){localStorage.setItem('hss_'+k,JSON.stringify(v));},
+  del(k){localStorage.removeItem('hss_'+k);},
+  keys(){return Object.keys(localStorage).filter(k=>k.startsWith('hss_')).map(k=>k.slice(4));}
+};
+
+// ═══════════════════ STATE ═══════════════════
+const State = {
+  user:null, view:'dashboard', params:{},
+  dark: localStorage.getItem('hss_dark')==='1',
+  sidebarOpen: window.innerWidth>900
+};
+
+// ═══════════════════ DATA ACCESSORS ═══════════════════
+const Data = {
+  users:()=>DB.get('users',[]), saveUsers:(v)=>DB.set('users',v),
+  materials:()=>DB.get('materials',[]), saveMaterials:(v)=>DB.set('materials',v),
+  ledger:()=>DB.get('ledger',[]), saveLedger:(v)=>DB.set('ledger',v),
+  requests:()=>DB.get('requests',[]), saveRequests:(v)=>DB.set('requests',v),
+  notifications:()=>DB.get('notifications',[]), saveNotifications:(v)=>DB.set('notifications',v),
+  audit:()=>DB.get('audit',[]), saveAudit:(v)=>DB.set('audit',v),
+  settings:()=>DB.get('settings',{}), saveSettings:(v)=>DB.set('settings',v),
+  categories:()=>{
+    const def = [
+      ['mechanical','Mechanical Spares','MEC'],['electrical','Electrical Spares','ELE'],
+      ['instrumentation','Instrumentation','INS'],['fire','Fire Fighting Equipment','FIR'],
+      ['safety','Safety Equipment','SAF'],['tools','Tools and Tackles','TOO'],
+      ['pumps','Pumps and Motors','PUM'],['valves','Valves and Fittings','VAL'],
+      ['bearings','Bearings','BEA'],['pipes','Pipes and Hoses','PIP'],
+      ['lpg','LPG Filling Equipment Spares','LPG'],['dpr','DPR and SC Valve Spares','DPR'],
+      ['cvt','CVT Equipment','CVT'],['office','Office Consumables','OFF'],
+      ['general','General Consumables','GEN'],['other','Other Materials','OTH']
+    ].map(([id,name,code])=>({id,name,code}));
+    return DB.get('categories',def);
+  },
+  saveCategories:(v)=>DB.set('categories',v)
+};
+
+// ═══════════════════ ROLES & PERMISSIONS ═══════════════════
+const ROLE_PERMS = {
+  super_admin:['*'],
+  store_admin:['materials.read','materials.write','receipts.create','issues.create','returns.create','requests.read.all','requests.approve','users.read','reports.read','ledger.read','settings.read'],
+  storekeeper:['materials.read','materials.write','receipts.create','issues.create','returns.create','requests.read.all','reports.read','ledger.read'],
+  engineering_officer:['materials.read','requests.read.all','requests.approve','reports.read','ledger.read','requests.create'],
+  technician:['materials.read','requests.create','ledger.read'],
+  auditor:['materials.read','reports.read','ledger.read','users.read'],
+  read_only:['materials.read','reports.read']
+};
+const ROLE_NAMES = {
+  super_admin:'Super Admin', store_admin:'Store Admin', storekeeper:'Storekeeper',
+  engineering_officer:'Engineering Officer', technician:'Maintenance Technician',
+  auditor:'Auditor', read_only:'Read-Only User'
+};
+function can(perm){
+  if(!State.user) return false;
+  const perms = State.user.permissions || [];
+  return perms.includes('*') || perms.includes(perm);
+}
+
+// ═══════════════════ AUDIT + NOTIFICATIONS ═══════════════════
+const Audit = {
+  log(userId, action, target, detail){
+    const logs = Data.audit();
+    logs.unshift({id:uid(),userId,action,target,detail,at:Date.now()});
+    Data.saveAudit(logs.slice(0,1000));
+  }
+};
+const Notify = {
+  create(userId,type,title,body){
+    const n = Data.notifications();
+    n.unshift({id:uid(),userId,type,title,body,read:false,at:Date.now()});
+    Data.saveNotifications(n.slice(0,500));
+  },
+  unreadCount(){
+    return Data.notifications().filter(x=>x.userId===(State.user?.uid??'_')&&!x.read).length;
+  }
+};
+
+// ═══════════════════ STOCK ENGINE ═══════════════════
+const SIGN = {'receipt':+1,'issue':-1,'return-good':+1,'return-damaged':0,'return-scrap':0,'adjustment':1,'reversal':1,'transfer-in':+1,'transfer-out':-1};
+function commitStock({type,materialId,qty,metadata={},refTxnId=null,reason=null}){
+  if(!State.user) throw new Error('Not authenticated');
+  const mats = Data.materials();
+  const mat = mats.find(m=>m.id===materialId);
+  if(!mat) throw new Error('Material not found');
+  if(mat.status!=='active') throw new Error('Material not active');
+  let delta = SIGN[type]*Math.abs(qty);
+  if(type==='reversal'){
+    const orig = Data.ledger().find(x=>x.id===refTxnId);
+    if(!orig) throw new Error('Original transaction not found');
+    delta = -orig.qtyDelta;
+  }
+  if(type==='adjustment') delta = Number(qty);
+  const newBalance = mat.currentStock + delta;
+  if(newBalance<0) throw new Error(`Insufficient stock. Available: ${mat.currentStock}`);
+  const txnId = 'TXN-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  const entry = {id:txnId,type,materialId,materialName:mat.name,qtyDelta:delta,balanceAfter:newBalance,refTxnId,reason,...metadata,userId:State.user.uid,userName:State.user.fullName,createdAt:Date.now()};
+  const ledger = Data.ledger(); ledger.unshift(entry); Data.saveLedger(ledger);
+  mat.currentStock = newBalance; mat.updatedAt = Date.now(); mat.updatedBy = State.user.uid;
+  Data.saveMaterials(mats);
+  if(newBalance<=mat.minStock && type!=='reversal'){
+    Data.users().filter(u=>['super_admin','store_admin'].includes(u.role)&&u.status==='active')
+      .forEach(a=>Notify.create(a.uid,'low-stock',`Low stock: ${mat.name}`,`Balance ${newBalance} ${mat.uom} ≤ min ${mat.minStock}`));
+  }
+  Audit.log(State.user.uid,'STOCK_'+type.toUpperCase(),{txnId,materialId,qty:delta},{balanceAfter:newBalance});
+  return entry;
+}
+
+// ═══════════════════ TOAST ═══════════════════
+function toast(msg,kind='info'){
+  const colors = {info:'#0D9488',success:'#059669',error:'#DC2626',warn:'#D97706',warning:'#D97706'};
+  const t = document.createElement('div');
+  t.className='notif-toast'; t.style.background = colors[kind]||colors.info; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},3000);
+}
+
+// ═══════════════════ AUTH ═══════════════════
+const Auth = {
+  async login(ident,password){
+    const users = Data.users();
+    const u = users.find(x=>
+      (x.email?.toLowerCase()===ident.toLowerCase()||
+       x.username?.toLowerCase()===ident.toLowerCase()||
+       x.employeeId?.toLowerCase()===ident.toLowerCase()) &&
+      x.passwordHash===simpleHash(password));
+    if(!u) throw new Error('Invalid credentials');
+    if(u.status==='pending') throw new Error('Account pending admin approval');
+    if(u.status==='suspended'||u.status==='disabled') throw new Error('Account '+u.status);
+    u.lastLoginAt = Date.now(); Data.saveUsers(users);
+    Audit.log(u.uid,'LOGIN',null,{});
+    State.user = u;
+    sessionStorage.setItem('hss_session',u.uid);
+    return u;
+  },
+  logout(){
+    if(State.user) Audit.log(State.user.uid,'LOGOUT',null,{});
+    State.user = null; sessionStorage.removeItem('hss_session');
+    State.view='dashboard'; render();
+  },
+  restore(){
+    const id = sessionStorage.getItem('hss_session');
+    if(!id) return;
+    const u = Data.users().find(x=>x.uid===id);
+    if(u&&u.status==='active') State.user=u;
+  },
+  register(data){
+    const users = Data.users();
+    if(users.some(x=>x.email?.toLowerCase()===data.email.toLowerCase())) throw new Error('Email already exists');
+    if(users.some(x=>x.username?.toLowerCase()===data.username.toLowerCase())) throw new Error('Username taken');
+    if(users.some(x=>x.employeeId?.toLowerCase()===data.employeeId.toLowerCase())) throw new Error('Employee ID already exists');
+    const u = {
+      uid:uid(),fullName:data.fullName,employeeId:data.employeeId,
+      designation:data.designation,department:data.department,mobile:data.mobile,
+      email:data.email,username:data.username,passwordHash:simpleHash(data.password),
+      role:'technician',status:'pending',permissions:ROLE_PERMS.technician,
+      createdAt:Date.now(),lastLoginAt:null
+    };
+    users.push(u); Data.saveUsers(users);
+    Audit.log(u.uid,'REGISTER',{email:u.email},{});
+    Data.users().filter(x=>x.role==='super_admin'&&x.status==='active')
+      .forEach(a=>Notify.create(a.uid,'user-registration','New Registration',`${data.fullName} (${data.employeeId}) requested access`));
+    return u;
+  }
+};
+
+// ═══════════════════ SETUP WIZARD ═══════════════════
+function renderSetup(){
+  return `
+  <div class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-teal-700 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-teal-500 rounded-xl mb-3 text-3xl">🏭</div>
+        <h1 class="text-2xl font-bold text-navy-900 dark:text-white">Haldia Smart Store</h1>
+        <p class="text-sm text-steel-500 mt-1">First-time Super Admin Setup</p>
+      </div>
+      <form id="setupForm" class="space-y-3">
+        <div><label class="label">Full Name</label><input class="input" name="fullName" required></div>
+        <div><label class="label">Employee ID</label><input class="input" name="employeeId" required></div>
+        <div><label class="label">Email</label><input class="input" name="email" type="email" required></div>
+        <div><label class="label">Username</label><input class="input" name="username" required></div>
+        <div><label class="label">Password</label><input class="input" name="password" type="password" minlength="6" required></div>
+        <button type="submit" class="btn btn-primary w-full">Create Super Admin</button>
+        <button type="button" id="seedDemo" class="btn btn-secondary w-full text-xs">Or Load Demo Data</button>
+      </form>
+      <p class="text-xs text-steel-500 mt-4 text-center">Single-file demo. Data stays in this browser only.</p>
+    </div>
+  </div>`;
+}
+function bindSetup(){
+  $('#setupForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    const u = {
+      uid:uid(),fullName:d.fullName,employeeId:d.employeeId,email:d.email,username:d.username,
+      passwordHash:simpleHash(d.password),role:'super_admin',status:'active',permissions:['*'],
+      createdAt:Date.now(),lastLoginAt:Date.now(),
+      department:'Engineering',designation:'System Administrator',mobile:''
+    };
+    Data.saveUsers([u]); Data.saveCategories(Data.categories());
+    State.user = u; sessionStorage.setItem('hss_session',u.uid);
+    Audit.log(u.uid,'SETUP_COMPLETE',{},{});
+    toast('Super Admin created','success'); render();
+  });
+  $('#seedDemo').addEventListener('click',seedDemo);
+}
+
+function seedDemo(){
+  const admin = {uid:'admin-demo',fullName:'Demo Admin',employeeId:'EMP001',email:'admin@haldia.demo',username:'admin',passwordHash:simpleHash('admin123'),role:'super_admin',status:'active',permissions:['*'],createdAt:Date.now(),lastLoginAt:Date.now(),department:'Engineering',designation:'Store Manager',mobile:''};
+  const tech = {uid:'tech-demo',fullName:'Rajesh Kumar',employeeId:'EMP002',email:'rajesh@haldia.demo',username:'rajesh',passwordHash:simpleHash('tech123'),role:'technician',status:'pending',permissions:ROLE_PERMS.technician,createdAt:Date.now(),lastLoginAt:null,department:'Maintenance',designation:'Technician',mobile:''};
+  Data.saveUsers([admin,tech]); Data.saveCategories(Data.categories());
+  const samples = [
+    {name:'Ball Bearing 6205',category:'bearings',uom:'PCS',minStock:10,maxStock:100,unitPrice:250,openingStock:45},
+    {name:'Gasket Set LPG Valve',category:'valves',uom:'SET',minStock:5,maxStock:50,unitPrice:850,openingStock:3},
+    {name:'Pressure Gauge 0-25 Bar',category:'instrumentation',uom:'PCS',minStock:8,maxStock:40,unitPrice:1450,openingStock:22},
+    {name:'Safety Helmet Yellow',category:'safety',uom:'PCS',minStock:20,maxStock:200,unitPrice:320,openingStock:0},
+    {name:'Motor 2HP 3-Phase',category:'pumps',uom:'PCS',minStock:2,maxStock:20,unitPrice:12500,openingStock:6},
+    {name:'Fire Extinguisher ABC 6kg',category:'fire',uom:'PCS',minStock:10,maxStock:100,unitPrice:2800,openingStock:15},
+    {name:'Hand Gloves Leather',category:'safety',uom:'PAIR',minStock:30,maxStock:300,unitPrice:120,openingStock:8},
+    {name:'Steel Pipe 1" MS',category:'pipes',uom:'MTR',minStock:50,maxStock:500,unitPrice:180,openingStock:320}
+  ];
+  const seq = {}; const mats = [];
+  samples.forEach(s=>{
+    const cat = Data.categories().find(c=>c.id===s.category);
+    seq[cat.code]=(seq[cat.code]||0)+1;
+    const id = `HSS-${cat.code}-${new Date().getFullYear()}-${String(seq[cat.code]).padStart(5,'0')}`;
+    mats.push({id,name:s.name,description:'Demo material',categoryId:s.category,categoryName:cat.name,uom:s.uom,minStock:s.minStock,maxStock:s.maxStock,reorderLevel:Math.ceil(s.minStock*1.5),unitPrice:s.unitPrice,currentStock:s.openingStock,openingStock:s.openingStock,location:{rack:'R-0'+(1+Math.floor(Math.random()*5)),shelf:'S-0'+(1+Math.floor(Math.random()*3)),bin:'B-01'},status:'active',enteredBy:admin.uid,enteredAt:Date.now(),updatedAt:Date.now()});
+  });
+  Data.saveMaterials(mats);
+  const ledger = mats.filter(m=>m.openingStock>0).map(m=>({id:'TXN-'+Math.random().toString(36).slice(2,10).toUpperCase(),type:'receipt',materialId:m.id,materialName:m.name,qtyDelta:m.openingStock,balanceAfter:m.openingStock,userId:admin.uid,userName:admin.fullName,createdAt:Date.now()-Math.random()*86400000*30,reason:'Opening stock',supplierName:'Demo Supplier'}));
+  Data.saveLedger(ledger);
+  Data.saveRequests([
+    {id:uid(),requesterId:'tech-demo',requesterName:'Rajesh Kumar',materialId:mats[0].id,materialName:mats[0].name,qty:5,purpose:'Pump overhaul',equipmentRef:'PMP-001',workOrder:'WO-2201',status:'pending',createdAt:Date.now()-3600000,approvals:[]},
+    {id:uid(),requesterId:'tech-demo',requesterName:'Rajesh Kumar',materialId:mats[2].id,materialName:mats[2].name,qty:2,purpose:'Pressure check',equipmentRef:'CVT-005',workOrder:'WO-2202',status:'approved',createdAt:Date.now()-7200000,approvals:[{level:1,approverId:'admin-demo',at:Date.now()-3600000,action:'approved'}]}
+  ]);
+  State.user = admin; sessionStorage.setItem('hss_session',admin.uid);
+  toast('Demo loaded — login: admin / admin123','success');
+  render();
+}
+
+// ═══════════════════ LOGIN / REGISTER ═══════════════════
+function renderLogin(){
+  return `
+  <div class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-teal-700 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-teal-500 rounded-xl mb-3 text-3xl">🏭</div>
+        <h1 class="text-2xl font-bold text-navy-900 dark:text-white">Haldia Smart Store</h1>
+        <p class="text-sm text-steel-500 mt-1">Engineering Material Management</p>
+      </div>
+      <form id="loginForm" class="space-y-3">
+        <div><label class="label">Email / Username / Employee ID</label><input class="input" name="ident" required autofocus></div>
+        <div><label class="label">Password</label><input class="input" name="password" type="password" required></div>
+        <button type="submit" class="btn btn-primary w-full">Sign In</button>
+      </form>
+      <div class="text-center mt-4 text-sm">New user? <a href="#" id="gotoRegister" class="text-teal-600 font-semibold">Register here</a></div>
+    </div>
+  </div>`;
+}
+function renderRegister(){
+  return `
+  <div class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-teal-700 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <h1 class="text-2xl font-bold text-navy-900 dark:text-white text-center mb-1">Register</h1>
+      <p class="text-sm text-steel-500 text-center mb-4">Admin approval required after submission</p>
+      <form id="registerForm" class="space-y-3">
+        <div><label class="label">Full Name</label><input class="input" name="fullName" required></div>
+        <div><label class="label">Employee ID</label><input class="input" name="employeeId" required></div>
+        <div><label class="label">Designation</label><input class="input" name="designation" required></div>
+        <div><label class="label">Department</label><input class="input" name="department" required></div>
+        <div><label class="label">Mobile</label><input class="input" name="mobile" required></div>
+        <div><label class="label">Email</label><input class="input" name="email" type="email" required></div>
+        <div><label class="label">Username</label><input class="input" name="username" required></div>
+        <div><label class="label">Password</label><input class="input" name="password" type="password" minlength="6" required></div>
+        <button type="submit" class="btn btn-primary w-full">Submit for Approval</button>
+      </form>
+      <div class="text-center mt-4 text-sm">Already registered? <a href="#" id="gotoLogin" class="text-teal-600 font-semibold">Sign In</a></div>
+    </div>
+  </div>`;
+}
+function bindLoginRegister(){
+  const lf = $('#loginForm');
+  if(lf) lf.addEventListener('submit', async e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    try{ await Auth.login(fd.get('ident'),fd.get('password')); toast('Welcome, '+State.user.fullName,'success'); render(); }
+    catch(err){ toast(err.message,'error'); }
+  });
+  const gr = $('#gotoRegister'); if(gr) gr.addEventListener('click',e=>{e.preventDefault();State.view='register';render();});
+  const gl = $('#gotoLogin'); if(gl) gl.addEventListener('click',e=>{e.preventDefault();State.view='login';render();});
+  const rf = $('#registerForm');
+  if(rf) rf.addEventListener('submit',e=>{
+    e.preventDefault();
+    try{ Auth.register(Object.fromEntries(new FormData(e.target))); toast('Registration submitted','success'); State.view='login'; render(); }
+    catch(err){ toast(err.message,'error'); }
+  });
+}
+
+// ═══════════════════ SHELL ═══════════════════
+const NAV = [
+  {section:'DASHBOARD',items:[{key:'dashboard',label:'Dashboard',icon:'📊'}]},
+  {section:'INVENTORY',items:[
+    {key:'materials',label:'All Materials',icon:'📦'},
+    {key:'material-add',label:'Add New Material',icon:'➕'},
+    {key:'scan',label:'QR Scanner',icon:'📷'}
+  ]},
+  {section:'TRANSACTIONS',items:[
+    {key:'receipts',label:'Receipts',icon:'📥'},
+    {key:'issues',label:'Issues',icon:'📤'},
+    {key:'returns',label:'Returns',icon:'↩️'}
+  ]},
+  {section:'REQUESTS',items:[{key:'requests',label:'Material Requests',icon:'📋'}]},
+  {section:'REPORTS',items:[
+    {key:'reports',label:'Reports & Export',icon:'📈'},
+    {key:'audit',label:'Audit Log',icon:'🔍'}
+  ]},
+  {section:'SYSTEM',items:[
+    {key:'notifications',label:'Notifications',icon:'🔔'},
+    {key:'users',label:'User Management',icon:'👥',admin:true},
+    {key:'settings',label:'Settings',icon:'⚙️'}
+  ]}
+];
+
+function renderShell(){
+  const nc = Notify.unreadCount();
+  return `
+  <div class="min-h-screen flex">
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-navy-900 text-white flex flex-col transition-transform ${State.sidebarOpen?'translate-x-0':'-translate-x-full md:translate-x-0'}">
+      <div class="p-4 border-b border-navy-700 flex items-center gap-3">
+        <div class="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center text-xl">🏭</div>
+        <div><div class="font-bold text-sm">Haldia Smart Store</div><div class="text-xs text-steel-300">LPG Bottling Plant</div></div>
+      </div>
+      <nav class="flex-1 overflow-y-auto p-2 space-y-4">
+        ${NAV.map(s=>`
+          <div>
+            <div class="text-xs text-steel-500 font-semibold px-2 mb-1">${s.section}</div>
+            ${s.items.filter(it=>!it.admin||can('users.read')||State.user.role==='super_admin').map(it=>`
+              <button class="sidebar-item ${State.view===it.key||(it.key==='materials'&&State.view==='material-view')?'active':''}" data-nav="${it.key}">
+                <span>${it.icon}</span><span>${it.label}</span>
+              </button>`).join('')}
+          </div>`).join('')}
+      </nav>
+      <div class="p-2 border-t border-navy-700">
+        <button id="logoutBtn" class="sidebar-item" style="color:#FCA5A5"><span>🚪</span><span>Logout</span></button>
+      </div>
+    </aside>
+    <div class="flex-1 flex flex-col min-w-0">
+      <header class="bg-white dark:bg-navy-800 border-b border-steel-300 dark:border-navy-700 px-4 py-3 flex items-center gap-3">
+        <button id="menuToggle" class="btn btn-ghost md:hidden">☰</button>
+        <div class="flex-1 min-w-0"><input id="globalSearch" class="input max-w-md" placeholder="Search materials by name, ID, category..."></div>
+        <button id="themeToggle" class="btn btn-ghost" title="Toggle theme">${State.dark?'☀️':'🌙'}</button>
+        <button class="btn btn-ghost relative" data-nav="notifications">🔔${nc>0?`<span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">${nc}</span>`:''}</button>
+        <div class="hidden sm:block text-right text-xs">
+          <div class="font-semibold text-navy-900 dark:text-white">${esc(State.user.fullName)}</div>
+          <div class="text-steel-500">${ROLE_NAMES[State.user.role]||State.user.role}</div>
+        </div>
+      </header>
+      <main id="mainContent" class="flex-1 p-4 md:p-6 overflow-auto"></main>
+    </div>
+  </div>`;
+}
+function bindShell(){
+  $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.nav)));
+  const lo = $('#logoutBtn'); if(lo) lo.addEventListener('click',()=>{Auth.logout();toast('Signed out');});
+  const mt = $('#menuToggle'); if(mt) mt.addEventListener('click',()=>{State.sidebarOpen=!State.sidebarOpen;render();});
+  const tt = $('#themeToggle');
+  if(tt) tt.addEventListener('click',()=>{
+    State.dark = !State.dark;
+    document.documentElement.classList.toggle('dark',State.dark);
+    localStorage.setItem('hss_dark',State.dark?'1':'0');
+    render();
+  });
+  const gs = $('#globalSearch');
+  if(gs) gs.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&gs.value.trim()){State.view='materials';State.params={search:gs.value.trim()};render();}
+  });
+}
+function navigate(view){
+  if(view==='material-view') State.view='materials'; else State.view = view;
+  State.params = {}; render();
+}
+
+// ═══════════════════ DASHBOARD ═══════════════════
+function renderDashboard(){
+  const mats = Data.materials().filter(m=>m.status==='active');
+  const totalStock = mats.reduce((a,m)=>a+(m.currentStock||0),0);
+  const lowStock = mats.filter(m=>m.currentStock>0&&m.currentStock<=m.minStock).length;
+  const outOfStock = mats.filter(m=>m.currentStock===0).length;
+  const stockValue = mats.reduce((a,m)=>a+(m.currentStock||0)*(m.unitPrice||0),0);
+  const cats = new Set(mats.map(m=>m.categoryId)).size;
+  const ledger = Data.ledger();
+  const issued = ledger.filter(l=>l.type==='issue').reduce((a,l)=>a+Math.abs(l.qtyDelta),0);
+  const recent = ledger.slice(0,8);
+  const cards = [
+    {label:'Total Materials',value:mats.length,icon:'📦'},
+    {label:'Total Stock',value:fmt(totalStock),icon:'🗃️'},
+    {label:'Issued (All Time)',value:fmt(issued),icon:'📤'},
+    {label:'Low Stock',value:lowStock,icon:'⚠️'},
+    {label:'Out of Stock',value:outOfStock,icon:'🚨'},
+    {label:'Categories',value:cats,icon:'🏷️'},
+    {label:'Stock Value',value:fmtCur(stockValue),icon:'💰'}
+  ];
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-6">Dashboard</h1>
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+    ${cards.map(c=>`<div class="card"><div class="text-3xl mb-2">${c.icon}</div><div class="text-xs font-semibold text-steel-500 uppercase">${c.label}</div><div class="text-2xl font-bold text-navy-900 dark:text-white mt-1">${c.value}</div></div>`).join('')}
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <div class="card"><h3 class="font-bold mb-3 text-navy-900 dark:text-white">Category-wise Stock</h3><div style="height:220px"><canvas id="catChart"></canvas></div></div>
+    <div class="card"><h3 class="font-bold mb-3 text-navy-900 dark:text-white">Monthly Stock Movement</h3><div style="height:220px"><canvas id="movChart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h3 class="font-bold mb-3 text-navy-900 dark:text-white">Recent Transactions</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">Date</th><th>Type</th><th>Material</th><th class="text-right">Δ</th><th class="text-right">Balance</th><th>User</th></tr></thead>
+        <tbody>
+          ${recent.length?recent.map(l=>`<tr class="border-b border-steel-100 dark:border-navy-700"><td class="py-2 text-xs">${dt(l.createdAt)}</td><td><span class="badge badge-${l.qtyDelta>0?'green':l.qtyDelta<0?'red':'gray'}">${esc(l.type)}</span></td><td>${esc(l.materialName||'—')}</td><td class="text-right font-semibold ${l.qtyDelta>0?'text-green-600':l.qtyDelta<0?'text-red-600':''}">${l.qtyDelta>0?'+':''}${l.qtyDelta}</td><td class="text-right">${l.balanceAfter}</td><td class="text-xs">${esc(l.userName||'')}</td></tr>`).join(''):`<tr><td colspan="6" class="py-4 text-center text-steel-500">No transactions yet</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function bindDashboard(){
+  const mats = Data.materials().filter(m=>m.status==='active');
+  const catMap = {};
+  mats.forEach(m=>{const k = m.categoryName || Data.categories().find(c=>c.id===m.categoryId)?.name || 'Other'; catMap[k]=(catMap[k]||0)+(m.currentStock||0);});
+  const catCtx = $('#catChart');
+  if(catCtx&&window.Chart) new Chart(catCtx,{type:'doughnut',data:{labels:Object.keys(catMap),datasets:[{data:Object.values(catMap),backgroundColor:['#0D9488','#14B8A6','#2DD4BF','#0F766E','#115E59','#5EEAD4','#99F6E4','#134E4A']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}}}}});
+  const ledger = Data.ledger();
+  const months = [];
+  for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push({label:d.toLocaleString('en',{month:'short'}),key:d.getFullYear()+'-'+d.getMonth()});}
+  const inData = months.map(mo=>ledger.filter(l=>{const d=new Date(l.createdAt);return d.getFullYear()+'-'+d.getMonth()===mo.key&&l.qtyDelta>0;}).reduce((a,l)=>a+l.qtyDelta,0));
+  const outData = months.map(mo=>ledger.filter(l=>{const d=new Date(l.createdAt);return d.getFullYear()+'-'+d.getMonth()===mo.key&&l.qtyDelta<0;}).reduce((a,l)=>a+Math.abs(l.qtyDelta),0));
+  const movCtx = $('#movChart');
+  if(movCtx&&window.Chart) new Chart(movCtx,{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'Received',data:inData,backgroundColor:'#0D9488'},{label:'Issued',data:outData,backgroundColor:'#DC2626'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}},plugins:{legend:{labels:{boxWidth:12,font:{size:10}}}}}});
+}
+
+// ═══════════════════ MATERIALS ═══════════════════
+function renderMaterials(params={}){
+  let mats = Data.materials();
+  const search = (params.search||'').toLowerCase();
+  if(search) mats = mats.filter(m=>(m.name||'').toLowerCase().includes(search)||(m.id||'').toLowerCase().includes(search)||(m.categoryName||'').toLowerCase().includes(search));
+  const filter = params.filter||'all';
+  if(filter==='low') mats = mats.filter(m=>m.currentStock>0&&m.currentStock<=m.minStock);
+  if(filter==='out') mats = mats.filter(m=>m.currentStock===0);
+  if(filter==='inactive') mats = mats.filter(m=>m.status!=='active');
+  return `
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <h1 class="text-2xl font-bold text-navy-900 dark:text-white">Materials (${mats.length})</h1>
+    <div class="flex gap-2 flex-wrap">
+      <select id="filterSelect" class="input max-w-xs">
+        <option value="all" ${filter==='all'?'selected':''}>All Materials</option>
+        <option value="low" ${filter==='low'?'selected':''}>Low Stock</option>
+        <option value="out" ${filter==='out'?'selected':''}>Out of Stock</option>
+        <option value="inactive" ${filter==='inactive'?'selected':''}>Archived</option>
+      </select>
+      ${can('materials.write')?'<button class="btn btn-primary" data-nav="material-add">+ Add Material</button>':''}
+    </div>
+  </div>
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">ID</th><th>Name</th><th>Category</th><th class="text-right">Stock</th><th>UOM</th><th>Location</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${mats.length?mats.map(m=>{
+          const st = m.currentStock===0?{l:'OUT',c:'badge-red'}:m.currentStock<=m.minStock?{l:'LOW',c:'badge-yellow'}:{l:'OK',c:'badge-green'};
+          return `<tr class="border-b border-steel-100 dark:border-navy-700 hover:bg-steel-100 dark:hover:bg-navy-700">
+            <td class="py-2 font-mono text-xs">${esc(m.id)}</td>
+            <td class="font-medium">${esc(m.name)}</td>
+            <td class="text-xs">${esc(m.categoryName||m.categoryId)}</td>
+            <td class="text-right font-semibold">${m.currentStock}</td>
+            <td class="text-xs">${esc(m.uom)}</td>
+            <td class="text-xs">${esc(m.location?.rack||'—')}/${esc(m.location?.shelf||'—')}</td>
+            <td><span class="badge ${st.c}">${st.l}</span></td>
+            <td><button class="btn btn-ghost text-xs" data-material="${esc(m.id)}">View →</button></td>
+          </tr>`;
+        }).join(''):`<tr><td colspan="8" class="py-6 text-center text-steel-500">No materials found</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ═══════════════════ ADD MATERIAL ═══════════════════
+function renderMaterialAdd(){
+  if(!can('materials.write')) return `<div class="card p-6 text-center text-red-600">Access denied</div>`;
+  const cats = Data.categories();
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Add New Material</h1>
+  <form id="addMaterialForm" class="card space-y-4 max-w-2xl">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2"><label class="label">Material Name *</label><input class="input" name="name" required></div>
+      <div class="md:col-span-2"><label class="label">Description</label><textarea class="input" name="description" rows="2"></textarea></div>
+      <div><label class="label">Category *</label><select class="input" name="categoryId" required>${cats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
+      <div><label class="label">UOM *</label><select class="input" name="uom" required>${['PCS','SET','KG','LTR','MTR','PAIR','BOX'].map(u=>`<option>${u}</option>`).join('')}</select></div>
+      <div><label class="label">Min Stock *</label><input class="input" name="minStock" type="number" min="0" value="1" required></div>
+      <div><label class="label">Max Stock</label><input class="input" name="maxStock" type="number" min="0" value="100"></div>
+      <div><label class="label">Opening Stock</label><input class="input" name="openingStock" type="number" min="0" value="0"></div>
+      <div><label class="label">Unit Price (₹)</label><input class="input" name="unitPrice" type="number" min="0" step="0.01" value="0"></div>
+      <div><label class="label">Rack</label><input class="input" name="rack" placeholder="R-01"></div>
+      <div><label class="label">Shelf</label><input class="input" name="shelf" placeholder="S-01"></div>
+      <div><label class="label">Bin</label><input class="input" name="bin" placeholder="B-01"></div>
+      <div><label class="label">Manufacturer</label><input class="input" name="manufacturer"></div>
+      <div><label class="label">Part Number</label><input class="input" name="partNumber"></div>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn btn-primary">Create Material</button>
+      <button type="button" class="btn btn-secondary" data-nav="materials">Cancel</button>
+    </div>
+  </form>`;
+}
+
+// ═══════════════════ MATERIAL VIEW ═══════════════════
+function renderMaterialView({id}){
+  const mat = Data.materials().find(m=>m.id===id);
+  if(!mat) return `<div class="card p-6 text-center text-red-600">Material not found</div>`;
+  const ledger = Data.ledger().filter(l=>l.materialId===id).slice(0,20);
+  const st = mat.currentStock===0?{l:'OUT OF STOCK',c:'badge-red'}:mat.currentStock<=mat.minStock?{l:'LOW STOCK',c:'badge-yellow'}:{l:'ADEQUATE',c:'badge-green'};
+  return `
+  <div class="mb-4"><button class="btn btn-secondary text-xs" data-nav="materials">← Back</button></div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+    <div class="card lg:col-span-2">
+      <div class="flex items-start justify-between flex-wrap gap-2 mb-3">
+        <div>
+          <div class="text-xs text-steel-500 font-mono">${esc(mat.id)}</div>
+          <h1 class="text-2xl font-bold text-navy-900 dark:text-white">${esc(mat.name)}</h1>
+          <p class="text-sm text-steel-500">${esc(mat.categoryName||mat.categoryId)}</p>
+        </div>
+        <span class="badge ${st.c}">${st.l}</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+        <div><div class="text-xs text-steel-500">Current Stock</div><div class="font-bold text-lg">${mat.currentStock} ${esc(mat.uom)}</div></div>
+        <div><div class="text-xs text-steel-500">Min Stock</div><div class="font-bold">${mat.minStock}</div></div>
+        <div><div class="text-xs text-steel-500">Unit Price</div><div class="font-bold">${fmtCur(mat.unitPrice)}</div></div>
+        <div><div class="text-xs text-steel-500">Total Value</div><div class="font-bold">${fmtCur(mat.currentStock*mat.unitPrice)}</div></div>
+        <div><div class="text-xs text-steel-500">Location</div><div class="font-mono text-xs">${esc(mat.location?.rack||'—')} / ${esc(mat.location?.shelf||'—')} / ${esc(mat.location?.bin||'—')}</div></div>
+        <div><div class="text-xs text-steel-500">Manufacturer</div><div>${esc(mat.manufacturer||'—')}</div></div>
+        <div><div class="text-xs text-steel-500">Part No.</div><div>${esc(mat.partNumber||'—')}</div></div>
+        <div><div class="text-xs text-steel-500">Status</div><div>${esc(mat.status)}</div></div>
+      </div>
+      ${mat.description?`<p class="text-sm mt-3 text-steel-700 dark:text-steel-300">${esc(mat.description)}</p>`:''}
+      <div class="flex gap-2 mt-4 flex-wrap">
+        ${can('receipts.create')?`<button class="btn btn-primary" data-action="receive" data-id="${esc(mat.id)}">Receive</button>`:''}
+        ${can('issues.create')?`<button class="btn btn-secondary" data-action="issue" data-id="${esc(mat.id)}">Issue</button>`:''}
+        ${can('returns.create')?`<button class="btn btn-secondary" data-action="return" data-id="${esc(mat.id)}">Return</button>`:''}
+        ${can('requests.create')?`<button class="btn btn-secondary" data-action="request" data-id="${esc(mat.id)}">Request</button>`:''}
+      </div>
+    </div>
+    <div class="card text-center">
+      <h3 class="font-bold text-navy-900 dark:text-white mb-2">QR Code</h3>
+      <div class="bg-white p-2 rounded inline-block"><canvas id="qrCanvas"></canvas></div>
+      <div class="mt-2 flex gap-2 justify-center">
+        <button class="btn btn-secondary text-xs" id="qrDownload">Download</button>
+        <button class="btn btn-secondary text-xs" id="qrPrint">Print</button>
+      </div>
+      <p class="text-xs text-steel-500 mt-2 font-mono">${esc(mat.id)}</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="font-bold mb-3 text-navy-900 dark:text-white">Transaction History (last 20)</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">Date</th><th>Type</th><th class="text-right">Δ</th><th class="text-right">Balance</th><th>User</th><th>Notes</th></tr></thead>
+        <tbody>
+          ${ledger.length?ledger.map(l=>`<tr class="border-b border-steel-100 dark:border-navy-700">
+            <td class="py-2 text-xs">${dt(l.createdAt)}</td>
+            <td><span class="badge badge-${l.qtyDelta>0?'green':l.qtyDelta<0?'red':'gray'}">${esc(l.type)}</span></td>
+            <td class="text-right font-semibold ${l.qtyDelta>0?'text-green-600':l.qtyDelta<0?'text-red-600':''}">${l.qtyDelta>0?'+':''}${l.qtyDelta}</td>
+            <td class="text-right">${l.balanceAfter}</td>
+            <td class="text-xs">${esc(l.userName||'')}</td>
+            <td class="text-xs">${esc(l.reason||l.purpose||l.supplierName||'—')}</td>
+          </tr>`).join(''):`<tr><td colspan="6" class="py-4 text-center text-steel-500">No transactions</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div id="modalContainer"></div>`;
+}
+
+function bindMaterialView(){
+  const id = State.params.id;
+  const mat = Data.materials().find(m=>m.id===id);
+  if(!mat) return;
+  if(window.QRCode) QRCode.toCanvas($('#qrCanvas'),mat.id,{width:180,margin:2},err=>{if(err)console.error(err);});
+  const dl = $('#qrDownload');
+  if(dl) dl.addEventListener('click',()=>{const c=$('#qrCanvas');const a=document.createElement('a');a.download=mat.id+'.png';a.href=c.toDataURL('image/png');a.click();});
+  const pr = $('#qrPrint');
+  if(pr) pr.addEventListener('click',()=>{const c=$('#qrCanvas');const w=window.open('');w.document.write(`<h2>${esc(mat.name)}</h2><img src="${c.toDataURL()}"><p>${esc(mat.id)}</p><p>Rack: ${esc(mat.location?.rack||'—')} / Shelf: ${esc(mat.location?.shelf||'—')}</p>`);w.print();});
+  $$('[data-action]').forEach(b=>b.addEventListener('click',()=>openTxnModal(b.dataset.action,b.dataset.id)));
+}
+
+function openTxnModal(action,materialId){
+  const mat = Data.materials().find(m=>m.id===materialId);
+  const labels = {receive:'Receive Material',issue:'Issue Material',return:'Return Material',request:'Request Material'};
+  const body = {
+    receive:`<label class="label">Qty Received</label><input id="txQty" class="input" type="number" min="1" value="1" required>
+      <label class="label mt-2">Supplier</label><input id="txSupplier" class="input" placeholder="Supplier name">
+      <label class="label mt-2">PO/Invoice No.</label><input id="txRef" class="input">`,
+    issue:`<label class="label">Qty to Issue (max ${mat.currentStock})</label><input id="txQty" class="input" type="number" min="1" max="${mat.currentStock}" value="1" required>
+      <label class="label mt-2">Department</label><input id="txDept" class="input" value="Engineering">
+      <label class="label mt-2">Purpose</label><input id="txPurpose" class="input" placeholder="Work order / job purpose">`,
+    return:`<label class="label">Qty to Return</label><input id="txQty" class="input" type="number" min="1" value="1" required>
+      <label class="label mt-2">Condition</label><select id="txCondition" class="input">
+        <option value="return-good">Good / Reusable (adds to stock)</option>
+        <option value="return-damaged">Damaged (does NOT add)</option>
+        <option value="return-scrap">Scrap / Rejected (does NOT add)</option></select>
+      <label class="label mt-2">Reason</label><input id="txReason" class="input">`,
+    request:`<label class="label">Qty Required</label><input id="txQty" class="input" type="number" min="1" value="1" required>
+      <label class="label mt-2">Purpose</label><input id="txPurpose" class="input" required>
+      <label class="label mt-2">Work Order / Equipment</label><input id="txWorkOrder" class="input">`
+  }[action];
+  const c = $('#modalContainer');
+  c.innerHTML = `
+    <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" id="modalOverlay">
+      <div class="bg-white dark:bg-navy-800 rounded-xl p-6 max-w-md w-full">
+        <h3 class="text-xl font-bold mb-2 text-navy-900 dark:text-white">${labels[action]}</h3>
+        <p class="text-sm text-steel-500 mb-3">${esc(mat.name)} — ${mat.currentStock} ${mat.uom} available</p>
+        ${body}
+        <div class="flex gap-2 mt-4">
+          <button class="btn btn-primary flex-1" id="txConfirm">Confirm</button>
+          <button class="btn btn-secondary" id="txCancel">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  $('#txCancel').addEventListener('click',()=>c.innerHTML='');
+  $('#modalOverlay').addEventListener('click',e=>{if(e.target.id==='modalOverlay')c.innerHTML='';});
+  $('#txConfirm').addEventListener('click',()=>{
+    try{
+      const qty = Number($('#txQty').value);
+      if(!qty||qty<=0) throw new Error('Quantity must be positive');
+      if(action==='request'){
+        const reqs = Data.requests();
+        reqs.unshift({id:uid(),requesterId:State.user.uid,requesterName:State.user.fullName,materialId:mat.id,materialName:mat.name,qty,purpose:$('#txPurpose').value,workOrder:$('#txWorkOrder').value,status:'pending',createdAt:Date.now(),approvals:[]});
+        Data.saveRequests(reqs);
+        Data.users().filter(u=>['super_admin','store_admin','engineering_officer'].includes(u.role)&&u.status==='active')
+          .forEach(a=>Notify.create(a.uid,'request','New Request',`${State.user.fullName} requested ${qty} ${mat.uom} of ${mat.name}`));
+        toast('Request submitted','success');
+      } else {
+        const type = action==='receive'?'receipt':action==='issue'?'issue':$('#txCondition').value;
+        const meta = {};
+        if(action==='receive'){meta.supplierName=$('#txSupplier').value;meta.refNo=$('#txRef').value;}
+        if(action==='issue'){meta.department=$('#txDept').value;meta.purpose=$('#txPurpose').value;}
+        if(action==='return'){meta.reason=$('#txReason').value;}
+        commitStock({type,materialId:mat.id,qty,metadata:meta});
+        toast(labels[action]+' successful','success');
+      }
+      c.innerHTML='';
+      render();
+    }catch(err){toast(err.message,'error');}
+  });
+}
+
+// ═══════════════════ SCAN ═══════════════════
+function renderScan(){
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">QR Code Scanner</h1>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card">
+      <h3 class="font-bold mb-3">Camera Scan</h3>
+      <div id="qr-reader"></div>
+      <p class="text-xs text-steel-500 mt-2">Point your camera at a material QR code</p>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3">Manual Entry</h3>
+      <label class="label">Material ID</label>
+      <input id="manualId" class="input mb-2" placeholder="HSS-MEC-2024-00001">
+      <button class="btn btn-primary" id="manualOpen">Open Material</button>
+      <p class="text-xs text-steel-500 mt-4">Or use a USB barcode scanner — it types into the field above.</p>
+    </div>
+  </div>`;
+}
+function bindScan(){
+  const openId = (id)=>{
+    id = (id||'').trim();
+    if(!id) return;
+    const mat = Data.materials().find(m=>m.id===id);
+    if(!mat) return toast('Material not found: '+id,'error');
+    if(window.__qrScanner){try{window.__qrScanner.stop().catch(()=>{});}catch(e){}window.__qrScanner=null;}
+    State.params={id}; State.view='material-view'; render();
+  };
+  $('#manualOpen').addEventListener('click',()=>openId($('#manualId').value));
+  $('#manualId').addEventListener('keydown',e=>{if(e.key==='Enter')openId(e.target.value);});
+  if(window.Html5Qrcode){
+    try{
+      const scanner = new Html5Qrcode('qr-reader');
+      window.__qrScanner = scanner;
+      scanner.start({facingMode:'environment'},{fps:10,qrbox:250},(text)=>{
+        let id = text;
+        const m = text.match(/HSS-[A-Z]+-\d{4}-\d+/);
+        if(m) id = m[0];
+        scanner.stop().then(()=>{window.__qrScanner=null;openId(id);}).catch(()=>openId(id));
+      },()=>{}).catch(err=>{
+        const el = $('#qr-reader');
+        if(el) el.innerHTML = `<p class="text-sm text-red-600">Camera unavailable: ${esc(err.message||err)}</p><p class="text-xs text-steel-500 mt-1">Use manual entry →</p>`;
+      });
+    }catch(e){console.error(e);}
+  }
+}
+
+// ═══════════════════ TRANSACTION LISTS ═══════════════════
+function renderTxList(type,title,subtitle){
+  const ledger = Data.ledger();
+  const filtered = type==='returns'?ledger.filter(l=>l.type.startsWith('return-')):ledger.filter(l=>l.type===type);
+  return `
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <div><h1 class="text-2xl font-bold text-navy-900 dark:text-white">${title}</h1><p class="text-sm text-steel-500">${subtitle}</p></div>
+    <button class="btn btn-primary" data-nav="scan">📷 Scan & New</button>
+  </div>
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">Txn ID</th><th>Date</th><th>Material</th><th class="text-right">Qty</th><th class="text-right">Bal</th><th>Details</th><th>User</th></tr></thead>
+      <tbody>
+        ${filtered.length?filtered.map(l=>`<tr class="border-b border-steel-100 dark:border-navy-700">
+          <td class="py-2 font-mono text-xs">${esc(l.id)}</td>
+          <td class="text-xs">${dt(l.createdAt)}</td>
+          <td><button class="text-teal-600 hover:underline text-left" data-view-material="${esc(l.materialId)}">${esc(l.materialName||l.materialId)}</button></td>
+          <td class="text-right font-semibold">${l.qtyDelta>0?'+':''}${l.qtyDelta}</td>
+          <td class="text-right">${l.balanceAfter}</td>
+          <td class="text-xs">${esc(l.supplierName||l.purpose||l.reason||l.department||'—')}</td>
+          <td class="text-xs">${esc(l.userName)}</td>
+        </tr>`).join(''):`<tr><td colspan="7" class="py-6 text-center text-steel-500">No ${title.toLowerCase()} yet</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+const renderReceipts = ()=>renderTxList('receipt','Material Receipts','Goods received into store');
+const renderIssues = ()=>renderTxList('issue','Material Issues','Materials issued from store');
+const renderReturns = ()=>renderTxList('returns','Material Returns','Returns against issues');
+
+// ═══════════════════ REQUESTS ═══════════════════
+function renderRequests(){
+  const all = Data.requests();
+  const canApprove = can('requests.approve')||State.user.role==='super_admin';
+  const pending = canApprove?all.filter(r=>r.status==='pending'):[];
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Material Requests</h1>
+  ${pending.length?`<div class="card mb-4 border-l-4 border-amber-500">
+    <h3 class="font-bold mb-2 text-amber-600">Pending Approval (${pending.length})</h3>
+    ${pending.map(r=>`<div class="flex items-center justify-between border-b border-steel-100 dark:border-navy-700 py-2 flex-wrap gap-2">
+      <div><div class="font-semibold">${esc(r.materialName)} × ${r.qty}</div><div class="text-xs text-steel-500">${esc(r.requesterName)} — ${esc(r.purpose||'')}</div></div>
+      <div class="flex gap-2"><button class="btn btn-primary text-xs" data-approve="${r.id}">Approve</button><button class="btn btn-danger text-xs" data-reject="${r.id}">Reject</button></div>
+    </div>`).join('')}
+  </div>`:''}
+  <div class="card">
+    <h3 class="font-bold mb-3 text-navy-900 dark:text-white">All Requests</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">Date</th><th>Requester</th><th>Material</th><th class="text-right">Qty</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          ${all.length?all.map(r=>{
+            const cls = {pending:'badge-yellow',approved:'badge-blue',issued:'badge-green',rejected:'badge-red',cancelled:'badge-gray'}[r.status]||'badge-gray';
+            return `<tr class="border-b border-steel-100 dark:border-navy-700">
+              <td class="py-2 text-xs">${dt(r.createdAt)}</td>
+              <td class="text-xs">${esc(r.requesterName)}</td>
+              <td>${esc(r.materialName)}</td>
+              <td class="text-right font-semibold">${r.qty}</td>
+              <td><span class="badge ${cls}">${esc(r.status)}</span></td>
+              <td>${r.status==='approved'&&can('issues.create')?`<button class="btn btn-primary text-xs" data-issue-request="${r.id}">Issue</button>`:''}</td>
+            </tr>`;
+          }).join(''):`<tr><td colspan="6" class="py-6 text-center text-steel-500">No requests</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════ REPORTS ═══════════════════
+function renderReports(){
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Reports & Export</h1>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    ${[
+      {key:'stock',label:'Current Stock Report',desc:'All materials with balances',icon:'📦'},
+      {key:'ledger',label:'Transaction Ledger',desc:'Complete append-only history',icon:'📒'},
+      {key:'receipts',label:'Receipt Register',desc:'All goods received',icon:'📥'},
+      {key:'issues',label:'Issue Register',desc:'All materials issued',icon:'📤'},
+      {key:'returns',label:'Return Register',desc:'All returns processed',icon:'↩️'},
+      {key:'low',label:'Low Stock Report',desc:'Materials below minimum',icon:'⚠️'},
+      {key:'out',label:'Out of Stock Report',desc:'Zero-balance materials',icon:'🚨'},
+      {key:'users',label:'User Activity',desc:'All users and roles',icon:'👥'},
+      {key:'audit',label:'Audit Trail',desc:'System audit log',icon:'🔍'}
+    ].map(r=>`<div class="card">
+      <div class="text-2xl mb-2">${r.icon}</div>
+      <div class="font-bold text-navy-900 dark:text-white">${r.label}</div>
+      <div class="text-xs text-steel-500 mb-3">${r.desc}</div>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-primary text-xs" data-report="${r.key}" data-format="csv">CSV</button>
+        <button class="btn btn-secondary text-xs" data-report="${r.key}" data-format="xlsx">Excel</button>
+        <button class="btn btn-secondary text-xs" data-report="${r.key}" data-format="pdf">PDF</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+function buildReportData(key){
+  const mats = Data.materials();
+  const ledger = Data.ledger();
+  switch(key){
+    case 'stock': return {title:'Current Stock Report',cols:['Material ID','Name','Category','Stock','UOM','Min','Unit Price','Value'],rows:mats.map(m=>[m.id,m.name,m.categoryName||m.categoryId,m.currentStock,m.uom,m.minStock,m.unitPrice,m.currentStock*m.unitPrice])};
+    case 'ledger': return {title:'Transaction Ledger',cols:['Txn ID','Date','Type','Material','Δ','Balance','User'],rows:ledger.map(l=>[l.id,new Date(l.createdAt).toLocaleString(),l.type,l.materialName,l.qtyDelta,l.balanceAfter,l.userName])};
+    case 'receipts': return {title:'Receipt Register',cols:['Txn ID','Date','Material','Qty','Supplier','User'],rows:ledger.filter(l=>l.type==='receipt').map(l=>[l.id,new Date(l.createdAt).toLocaleString(),l.materialName,l.qtyDelta,l.supplierName||'',l.userName])};
+    case 'issues': return {title:'Issue Register',cols:['Txn ID','Date','Material','Qty','Dept','User'],rows:ledger.filter(l=>l.type==='issue').map(l=>[l.id,new Date(l.createdAt).toLocaleString(),l.materialName,Math.abs(l.qtyDelta),l.department||'',l.userName])};
+    case 'returns': return {title:'Return Register',cols:['Txn ID','Date','Material','Type','Qty','User'],rows:ledger.filter(l=>l.type.startsWith('return-')).map(l=>[l.id,new Date(l.createdAt).toLocaleString(),l.materialName,l.type,Math.abs(l.qtyDelta),l.userName])};
+    case 'low': return {title:'Low Stock Report',cols:['Material ID','Name','Stock','Min','UOM'],rows:mats.filter(m=>m.currentStock>0&&m.currentStock<=m.minStock).map(m=>[m.id,m.name,m.currentStock,m.minStock,m.uom])};
+    case 'out': return {title:'Out of Stock Report',cols:['Material ID','Name','Min','UOM'],rows:mats.filter(m=>m.currentStock===0).map(m=>[m.id,m.name,m.minStock,m.uom])};
+    case 'users': return {title:'User Activity',cols:['Name','Employee ID','Role','Status','Email','Last Login'],rows:Data.users().map(u=>[u.fullName,u.employeeId,ROLE_NAMES[u.role],u.status,u.email,u.lastLoginAt?new Date(u.lastLoginAt).toLocaleString():'Never'])};
+    case 'audit': return {title:'Audit Trail',cols:['Date','User','Action','Target'],rows:Data.audit().map(a=>[new Date(a.at).toLocaleString(),a.userId,a.action,JSON.stringify(a.target||{})])};
+  }
+}
+function exportCSV(key){
+  const r = buildReportData(key);
+  const csv = [r.cols,...r.rows].map(row=>row.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  downloadBlob(csv,r.title.replace(/\s+/g,'_')+'.csv','text/csv');
+}
+function exportXLSX(key){
+  const r = buildReportData(key);
+  const ws = XLSX.utils.aoa_to_sheet([r.cols,...r.rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,r.title.slice(0,30));
+  XLSX.writeFile(wb,r.title.replace(/\s+/g,'_')+'.xlsx');
+}
+function exportPDF(key){
+  const r = buildReportData(key);
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF('l','pt');
+  doc.setFontSize(14); doc.text('Haldia LPG Bottling Plant',40,40);
+  doc.setFontSize(10); doc.text(r.title+' — '+new Date().toLocaleString(),40,58);
+  doc.autoTable({head:[r.cols],body:r.rows.map(row=>row.map(c=>String(c??''))),startY:75,styles:{fontSize:8},headStyles:{fillColor:[13,148,136]}});
+  doc.save(r.title.replace(/\s+/g,'_')+'.pdf');
+}
+function downloadBlob(content,filename,type){
+  const blob = new Blob([content],{type});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+// ═══════════════════ USERS ═══════════════════
+function renderUsers(){
+  if(!can('users.read')&&State.user.role!=='super_admin') return `<div class="card p-6 text-center text-red-600">Access denied</div>`;
+  const users = Data.users();
+  const pending = users.filter(u=>u.status==='pending');
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">User Management</h1>
+  ${pending.length?`<div class="card mb-4 border-l-4 border-amber-500">
+    <h3 class="font-bold mb-2 text-amber-600">Pending Approvals (${pending.length})</h3>
+    ${pending.map(u=>`<div class="flex items-center justify-between border-b border-steel-100 dark:border-navy-700 py-2 flex-wrap gap-2">
+      <div><div class="font-semibold">${esc(u.fullName)}</div><div class="text-xs text-steel-500">${esc(u.email)} — ${esc(u.employeeId)}</div></div>
+      <div class="flex gap-2">
+        <select class="input text-xs max-w-xs" data-role-for="${u.uid}">${Object.keys(ROLE_NAMES).map(r=>`<option value="${r}">${ROLE_NAMES[r]}</option>`).join('')}</select>
+        <button class="btn btn-primary text-xs" data-approve-user="${u.uid}">Approve</button>
+        <button class="btn btn-danger text-xs" data-reject-user="${u.uid}">Reject</button>
+      </div>
+    </div>`).join('')}
+  </div>`:''}
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">Name</th><th>Emp ID</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th></th></tr></thead>
+      <tbody>
+        ${users.map(u=>`<tr class="border-b border-steel-100 dark:border-navy-700">
+          <td class="py-2 font-medium">${esc(u.fullName)}</td>
+          <td class="text-xs">${esc(u.employeeId)}</td>
+          <td class="text-xs">${esc(u.email)}</td>
+          <td><span class="badge badge-blue">${ROLE_NAMES[u.role]||u.role}</span></td>
+          <td><span class="badge ${u.status==='active'?'badge-green':u.status==='pending'?'badge-yellow':'badge-red'}">${u.status}</span></td>
+          <td class="text-xs">${u.lastLoginAt?dt(u.lastLoginAt):'Never'}</td>
+          <td>
+            ${u.status==='active'&&u.uid!==State.user.uid?`<button class="btn btn-ghost text-xs text-red-600" data-suspend-user="${u.uid}">Suspend</button>`:''}
+            ${u.status==='suspended'?`<button class="btn btn-ghost text-xs text-green-600" data-reactivate-user="${u.uid}">Reactivate</button>`:''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ═══════════════════ AUDIT ═══════════════════
+function renderAudit(){
+  if(!can('reports.read')&&State.user.role!=='super_admin') return `<div class="card p-6 text-center text-red-600">Access denied</div>`;
+  const logs = Data.audit();
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Audit Log (${logs.length})</h1>
+  <div class="card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-steel-500 uppercase border-b"><th class="py-2">When</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+      <tbody>
+        ${logs.length?logs.map(l=>{const u=Data.users().find(x=>x.uid===l.userId);return `<tr class="border-b border-steel-100 dark:border-navy-700">
+          <td class="py-2 text-xs">${dt(l.at)}</td>
+          <td class="text-xs">${esc(u?.fullName||l.userId)}</td>
+          <td><span class="badge badge-blue">${esc(l.action)}</span></td>
+          <td class="text-xs font-mono">${esc(JSON.stringify(l.detail||{}).slice(0,80))}</td>
+        </tr>`;}).join(''):`<tr><td colspan="4" class="py-6 text-center text-steel-500">No logs</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ═══════════════════ NOTIFICATIONS ═══════════════════
+function renderNotifications(){
+  const all = Data.notifications();
+  const ns = all.filter(n=>n.userId===State.user.uid);
+  let changed = false;
+  all.forEach(n=>{if(n.userId===State.user.uid&&!n.read){n.read=true;changed=true;}});
+  if(changed) Data.saveNotifications(all);
+  const badge = document.querySelector('button[data-nav="notifications"] .bg-red-500');
+  if(badge) badge.remove();
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Notifications</h1>
+  <div class="space-y-2">
+    ${ns.length?ns.map(n=>`<div class="card flex items-start gap-3">
+      <div class="text-2xl">${n.type==='low-stock'?'⚠️':n.type==='user-registration'?'👤':n.type==='request'?'📋':'🔔'}</div>
+      <div class="flex-1"><div class="font-semibold text-navy-900 dark:text-white">${esc(n.title)}</div><div class="text-sm text-steel-500">${esc(n.body)}</div><div class="text-xs text-steel-500 mt-1">${dt(n.at)}</div></div>
+    </div>`).join(''):`<div class="card text-center text-steel-500 py-8">No notifications</div>`}
+  </div>`;
+}
+
+// ═══════════════════ SETTINGS ═══════════════════
+function renderSettings(){
+  if(State.user.role!=='super_admin') return `<div class="card p-6 text-center text-red-600">Only Super Admin can access settings</div>`;
+  const s = Data.settings();
+  return `
+  <h1 class="text-2xl font-bold text-navy-900 dark:text-white mb-4">Settings</h1>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="card">
+      <h3 class="font-bold mb-3 text-navy-900 dark:text-white">Branding</h3>
+      <label class="label">Plant Name</label><input class="input mb-2" id="setPlantName" value="${esc(s.plantName||'Haldia LPG Bottling Plant')}">
+      <label class="label">App Title</label><input class="input mb-2" id="setAppTitle" value="${esc(s.appTitle||'Haldia Smart Store')}">
+      <button class="btn btn-primary" id="saveBranding">Save Branding</button>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3 text-navy-900 dark:text-white">Backup & Restore</h3>
+      <p class="text-xs text-steel-500 mb-3">Export all data as JSON — keep this file safe.</p>
+      <button class="btn btn-primary mb-2 w-full" id="exportBackup">📥 Download Backup (JSON)</button>
+      <label class="btn btn-secondary w-full cursor-pointer">📤 Restore from Backup<input type="file" id="importBackup" accept=".json" class="hidden"></label>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3 text-red-600">Danger Zone</h3>
+      <p class="text-xs text-steel-500 mb-3">Deletes ALL data. Cannot be undone.</p>
+      <button class="btn btn-danger" id="wipeData">🗑️ Wipe All Data</button>
+    </div>
+    <div class="card">
+      <h3 class="font-bold mb-3 text-navy-900 dark:text-white">System Info</h3>
+      <div class="text-sm space-y-1">
+        <div>Users: <b>${Data.users().length}</b></div>
+        <div>Materials: <b>${Data.materials().length}</b></div>
+        <div>Ledger entries: <b>${Data.ledger().length}</b></div>
+        <div>Audit logs: <b>${Data.audit().length}</b></div>
+        <div class="text-xs text-steel-500 mt-2">Storage used: ~${Math.round(JSON.stringify(localStorage).length/1024)} KB</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════ BINDERS ═══════════════════
+function bindView(view){
+  $$('[data-nav]').forEach(b=>{if(!b.dataset.bound){b.dataset.bound='1';b.addEventListener('click',()=>navigate(b.dataset.nav));}});
+  if(view==='dashboard') bindDashboard();
+  if(view==='materials'){
+    $$('[data-material]').forEach(b=>b.addEventListener('click',()=>{State.view='material-view';State.params={id:b.dataset.material};render();}));
+    const fs = $('#filterSelect');
+    if(fs) fs.addEventListener('change',()=>{State.params={...State.params,filter:fs.value};render();});
+  }
+  if(view==='material-add'){
+    const form = $('#addMaterialForm');
+    if(form) form.addEventListener('submit',e=>{
+      e.preventDefault();
+      try{
+        const d = Object.fromEntries(new FormData(form));
+        const mats = Data.materials();
+        const cat = Data.categories().find(c=>c.id===d.categoryId);
+        const year = new Date().getFullYear();
+        const seq = mats.filter(m=>m.categoryId===d.categoryId&&m.id?.includes(`-${year}-`)).length+1;
+        const id = `HSS-${cat.code}-${year}-${String(seq).padStart(5,'0')}`;
+        const openingStock = Number(d.openingStock)||0;
+        const mat = {id,name:d.name,description:d.description,categoryId:d.categoryId,categoryName:cat.name,uom:d.uom,minStock:Number(d.minStock),maxStock:Number(d.maxStock),openingStock,currentStock:openingStock,unitPrice:Number(d.unitPrice),location:{rack:d.rack,shelf:d.shelf,bin:d.bin},manufacturer:d.manufacturer,partNumber:d.partNumber,status:'active',enteredBy:State.user.uid,enteredAt:Date.now(),updatedAt:Date.now(),updatedBy:State.user.uid};
+        mats.push(mat); Data.saveMaterials(mats);
+        if(openingStock>0) commitStock({type:'receipt',materialId:id,qty:openingStock,metadata:{reason:'Opening stock'}});
+        Audit.log(State.user.uid,'MATERIAL_CREATE',{id},{name:d.name});
+        toast(`Material created: ${id}`,'success');
+        State.view='material-view'; State.params={id}; render();
+      }catch(err){toast(err.message,'error');}
+    });
+  }
+  if(view==='material-view') bindMaterialView();
+  if(view==='scan') bindScan();
+  if(['receipts','issues','returns'].includes(view)){
+    $$('[data-view-material]').forEach(b=>b.addEventListener('click',()=>{State.view='material-view';State.params={id:b.dataset.viewMaterial};render();}));
+  }
+  if(view==='requests'){
+    $$('[data-approve]').forEach(b=>b.addEventListener('click',()=>{
+      const reqs = Data.requests(); const r = reqs.find(x=>x.id===b.dataset.approve);
+      if(!r) return;
+      r.status='approved'; r.approvals.push({level:1,approverId:State.user.uid,at:Date.now(),action:'approved'});
+      Data.saveRequests(reqs);
+      Notify.create(r.requesterId,'request','Request Approved',`Your request for ${r.materialName} was approved`);
+      toast('Request approved','success'); render();
+    }));
+    $$('[data-reject]').forEach(b=>b.addEventListener('click',()=>{
+      const reqs = Data.requests(); const r = reqs.find(x=>x.id===b.dataset.reject);
+      if(!r) return;
+      r.status='rejected'; r.approvals.push({level:1,approverId:State.user.uid,at:Date.now(),action:'rejected'});
+      Data.saveRequests(reqs);
+      Notify.create(r.requesterId,'request','Request Rejected',`Your request for ${r.materialName} was rejected`);
+      toast('Request rejected','warning'); render();
+    }));
+    $$('[data-issue-request]').forEach(b=>b.addEventListener('click',()=>{
+      const reqs = Data.requests(); const r = reqs.find(x=>x.id===b.dataset.issueRequest);
+      if(!r) return;
+      try{
+        commitStock({type:'issue',materialId:r.materialId,qty:r.qty,metadata:{purpose:r.purpose,department:r.department||'Engineering'}});
+        r.status='issued'; Data.saveRequests(reqs);
+        toast('Material issued','success'); render();
+      }catch(err){toast(err.message,'error');}
+    }));
+  }
+  if(view==='reports'){
+    $$('[data-report]').forEach(b=>b.addEventListener('click',()=>{
+      try{
+        const {report,format} = b.dataset;
+        if(format==='csv') exportCSV(report);
+        if(format==='xlsx') exportXLSX(report);
+        if(format==='pdf') exportPDF(report);
+        toast('Report exported','success');
+      }catch(err){toast(err.message,'error');}
+    }));
+  }
+  if(view==='users'){
+    $$('[data-approve-user]').forEach(b=>b.addEventListener('click',()=>{
+      const uid2 = b.dataset.approveUser; const role = $(`[data-role-for="${uid2}"]`).value;
+      const users = Data.users(); const u = users.find(x=>x.uid===uid2);
+      if(!u) return;
+      u.status='active'; u.role=role; u.permissions=ROLE_PERMS[role]||['materials.read'];
+      Data.saveUsers(users);
+      Notify.create(uid2,'user-approved','Account Activated','Your account has been approved');
+      toast(`Approved ${u.fullName} as ${ROLE_NAMES[role]}`,'success'); render();
+    }));
+    $$('[data-reject-user]').forEach(b=>b.addEventListener('click',()=>{
+      const uid2 = b.dataset.rejectUser; const users = Data.users(); const u = users.find(x=>x.uid===uid2);
+      if(!u) return; u.status='disabled'; Data.saveUsers(users); toast('User rejected','warning'); render();
+    }));
+    $$('[data-suspend-user]').forEach(b=>b.addEventListener('click',()=>{
+      if(!confirm('Suspend this user?')) return;
+      const uid2 = b.dataset.suspendUser; const users = Data.users(); const u = users.find(x=>x.uid===uid2);
+      if(!u) return; u.status='suspended'; Data.saveUsers(users); toast('User suspended','warning'); render();
+    }));
+    $$('[data-reactivate-user]').forEach(b=>b.addEventListener('click',()=>{
+      const uid2 = b.dataset.reactivateUser; const users = Data.users(); const u = users.find(x=>x.uid===uid2);
+      if(!u) return; u.status='active'; Data.saveUsers(users); toast('User reactivated','success'); render();
+    }));
+  }
+  if(view==='settings'){
+    $('#saveBranding').addEventListener('click',()=>{
+      const s = Data.settings(); s.plantName=$('#setPlantName').value; s.appTitle=$('#setAppTitle').value; Data.saveSettings(s);
+      toast('Branding saved','success');
+    });
+    $('#exportBackup').addEventListener('click',()=>{
+      const data = {}; DB.keys().forEach(k=>{data[k]=DB.get(k);});
+      downloadBlob(JSON.stringify(data,null,2),'haldia-smart-store-backup-'+today()+'.json','application/json');
+      toast('Backup downloaded','success');
+    });
+    $('#importBackup').addEventListener('change',e=>{
+      const file = e.target.files[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const data = JSON.parse(reader.result);
+          if(!confirm('Restore will overwrite current data. Continue?')) return;
+          Object.keys(data).forEach(k=>DB.set(k,data[k]));
+          toast('Backup restored. Reloading...','success');
+          setTimeout(()=>location.reload(),1000);
+        }catch(err){toast('Invalid backup file','error');}
+      };
+      reader.readAsText(file);
+    });
+    $('#wipeData').addEventListener('click',()=>{
+      if(!confirm('WIPE ALL DATA? This cannot be undone!')) return;
+      if(!confirm('Really sure?')) return;
+      DB.keys().forEach(k=>DB.del(k));
+      localStorage.removeItem('hss_session');
+      location.reload();
+    });
+  }
+}
+
+// ═══════════════════ RENDER ═══════════════════
+function render(){
+  const root = $('#root');
+  if(!State.user){
+    if(Data.users().length===0){ root.innerHTML = renderSetup(); bindSetup(); }
+    else { root.innerHTML = State.view==='register'?renderRegister():renderLogin(); bindLoginRegister(); }
+    return;
+  }
+  root.innerHTML = renderShell(); bindShell();
+  const main = $('#mainContent');
+  const views = {
+    dashboard:renderDashboard, materials:renderMaterials, 'material-add':renderMaterialAdd,
+    'material-view':renderMaterialView, scan:renderScan, receipts:renderReceipts,
+    issues:renderIssues, returns:renderReturns, requests:renderRequests,
+    reports:renderReports, users:renderUsers, settings:renderSettings,
+    notifications:renderNotifications, audit:renderAudit
+  };
+  const fn = views[State.view]||renderDashboard;
+  main.innerHTML = `<div class="fade-in">${fn(State.params)}</div>`;
+  bindView(State.view);
+}
+
+// ═══════════════════ INIT ═══════════════════
+function init(){
+  if(State.dark) document.documentElement.classList.add('dark');
+  Auth.restore();
+  render();
+}
+init();
+</script>
+</body>
+</html>
